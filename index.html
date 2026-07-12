@@ -81,6 +81,43 @@
     content: "▸ ";
     color: var(--accent);
   }
+  #stopwatch {
+    margin-top: 28px;
+    border-top: 1px solid var(--border);
+    padding-top: 20px;
+  }
+  #sw-time {
+    text-align: center;
+    font-size: 3rem;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: 0.02em;
+    margin-bottom: 14px;
+  }
+  #sw-buttons {
+    display: flex;
+    gap: 12px;
+  }
+  #sw-buttons button {
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 18px 0;
+    font: inherit;
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: var(--text);
+    background: var(--card);
+    cursor: pointer;
+    touch-action: manipulation;
+    transition: transform 0.08s ease, background 0.08s ease;
+  }
+  #sw-buttons button:active {
+    background: var(--card-press);
+    transform: scale(0.98);
+  }
+  #sw-reset { flex: 1; }
+  #sw-toggle { flex: 2; border-color: var(--accent); color: var(--accent); }
+  #sw-toggle.running { background: var(--accent); color: #fff; }
   #done-flash {
     position: fixed;
     left: 50%;
@@ -104,6 +141,13 @@
 <body>
 <h1>Next up</h1>
 <div id="queue"></div>
+<div id="stopwatch">
+  <div id="sw-time">0:00.0</div>
+  <div id="sw-buttons">
+    <button type="button" id="sw-reset">Reset</button>
+    <button type="button" id="sw-toggle">Start</button>
+  </div>
+</div>
 <div id="done-flash">Done ✓</div>
 
 <script>
@@ -214,6 +258,51 @@
       container.appendChild(btn);
     });
   }
+
+  // --- Stopwatch ---
+  var swElapsed = 0;       // accumulated ms while paused
+  var swStartedAt = null;  // timestamp of current run, or null if stopped
+  var swTimer = null;
+  var swTimeEl = document.getElementById("sw-time");
+  var swToggleEl = document.getElementById("sw-toggle");
+
+  function swNow() {
+    return swElapsed + (swStartedAt ? Date.now() - swStartedAt : 0);
+  }
+
+  function swFormat(ms) {
+    var tenths = Math.floor(ms / 100) % 10;
+    var totalSec = Math.floor(ms / 1000);
+    var sec = totalSec % 60;
+    var min = Math.floor(totalSec / 60);
+    return min + ":" + (sec < 10 ? "0" : "") + sec + "." + tenths;
+  }
+
+  function swRender() {
+    swTimeEl.textContent = swFormat(swNow());
+  }
+
+  swToggleEl.addEventListener("click", function () {
+    if (swStartedAt) {
+      swElapsed = swNow();
+      swStartedAt = null;
+      clearInterval(swTimer);
+      swToggleEl.textContent = "Start";
+      swToggleEl.classList.remove("running");
+      swRender();
+    } else {
+      swStartedAt = Date.now();
+      swTimer = setInterval(swRender, 100);
+      swToggleEl.textContent = "Stop";
+      swToggleEl.classList.add("running");
+    }
+  });
+
+  document.getElementById("sw-reset").addEventListener("click", function () {
+    swElapsed = 0;
+    if (swStartedAt) swStartedAt = Date.now();
+    swRender();
+  });
 
   // Refresh "days ago" labels when the tab is reopened on a later day.
   document.addEventListener("visibilitychange", function () {
