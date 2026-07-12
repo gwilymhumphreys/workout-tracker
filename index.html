@@ -82,10 +82,11 @@
     text-align: center;
     font-size: 3rem;
     font-weight: 600;
-    font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
-    font-variant-numeric: tabular-nums;
     margin-bottom: 14px;
   }
+  #sw-time span { display: inline-block; text-align: center; }
+  #sw-time .d { width: 0.62em; }
+  #sw-time .s { width: 0.3em; }
   #sw-buttons {
     display: flex;
     gap: 12px;
@@ -271,7 +272,14 @@
   }
 
   function swRender() {
-    swTimeEl.textContent = swFormat(swNow());
+    var text = swFormat(swNow());
+    swTimeEl.textContent = "";
+    for (var i = 0; i < text.length; i++) {
+      var ch = document.createElement("span");
+      ch.className = (text[i] >= "0" && text[i] <= "9") ? "d" : "s";
+      ch.textContent = text[i];
+      swTimeEl.appendChild(ch);
+    }
   }
 
   swToggleEl.addEventListener("click", function () {
@@ -302,6 +310,7 @@
   });
 
   render();
+  swRender();
 })();
 </script>
 </body>
