@@ -99,27 +99,12 @@
     opacity: 1;
     transform: translateX(-50%) translateY(0);
   }
-  footer {
-    margin-top: 40px;
-    text-align: center;
-  }
-  #reset {
-    color: var(--muted);
-    font-size: 0.75rem;
-    text-decoration: underline;
-    background: none;
-    border: none;
-    cursor: pointer;
-    padding: 8px 12px;
-    font-family: inherit;
-  }
 </style>
 </head>
 <body>
 <h1>Next up</h1>
 <div id="queue"></div>
 <div id="done-flash">Done ✓</div>
-<footer><button id="reset">reset all history</button></footer>
 
 <script>
 (function () {
@@ -229,14 +214,6 @@
       container.appendChild(btn);
     });
   }
-
-  document.getElementById("reset").addEventListener("click", function () {
-    if (confirm("Clear all exercise history?")) {
-      state = {};
-      try { localStorage.removeItem(STORAGE_KEY); } catch (e) {}
-      render();
-    }
-  });
 
   // Refresh "days ago" labels when the tab is reopened on a later day.
   document.addEventListener("visibilitychange", function () {
