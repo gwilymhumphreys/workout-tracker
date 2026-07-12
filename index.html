@@ -131,10 +131,10 @@
 
   // id must be stable across versions — lastDone timestamps are keyed on it.
   var EXERCISES = [
-    { id: "calf-raises",   name: "Calf raises",            detail: "single-leg, slow, off a step",      weight: 3 },
-    { id: "copenhagen",    name: "Copenhagen planks",      detail: "",                                   weight: 2 },
-    { id: "reverse-lunge", name: "Reverse lunges",         detail: "dumbbells",                          weight: 1 },
-    { id: "nordic-iso",    name: "Nordic isometric hold",  detail: "mid-range, held till burn",          weight: 1 }
+    { id: "calf-raises",   name: "Calf raises",           weight: 3 },
+    { id: "copenhagen",    name: "Copenhagen planks",     weight: 2 },
+    { id: "reverse-lunge", name: "Reverse lunges",        weight: 1 },
+    { id: "nordic-iso",    name: "Nordic isometric hold", weight: 1 }
   ];
 
   function loadState() {
@@ -217,7 +217,7 @@
 
       var name = document.createElement("div");
       name.className = "name";
-      name.textContent = ex.name + (ex.detail ? " — " + ex.detail : "");
+      name.textContent = ex.name;
 
       var last = document.createElement("div");
       last.className = "last";
