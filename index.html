@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="dark light">
+<title>Gym Queue</title>
+<style>
+  :root {
+    --bg: #121417;
+    --card: #1e2228;
+    --card-press: #2a3038;
+    --text: #e8eaed;
+    --muted: #9aa0a8;
+    --accent: #4cc38a;
+    --border: #2c313a;
+  }
+  @media (prefers-color-scheme: light) {
+    :root {
+      --bg: #f4f5f7;
+      --card: #ffffff;
+      --card-press: #e8ebef;
+      --text: #1a1d21;
+      --muted: #6b7280;
+      --accent: #14804a;
+      --border: #dde0e5;
+    }
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    padding: max(16px, env(safe-area-inset-top)) 16px max(24px, env(safe-area-inset-bottom));
+    max-width: 480px;
+    margin: 0 auto;
+    -webkit-tap-highlight-color: transparent;
+  }
+  h1 {
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    margin: 8px 4px 16px;
+  }
+  #queue { display: flex; flex-direction: column; gap: 12px; }
+  .exercise {
+    display: block;
+    width: 100%;
+    text-align: left;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 20px 18px;
+    cursor: pointer;
+    color: var(--text);
+    font: inherit;
+    transition: transform 0.08s ease, background 0.08s ease;
+    touch-action: manipulation;
+  }
+  .exercise:active {
+    background: var(--card-press);
+    transform: scale(0.98);
+  }
+  .exercise .name {
+    font-size: 1.25rem;
+    font-weight: 600;
+    line-height: 1.3;
+  }
+  .exercise .last {
+    font-size: 0.85rem;
+    color: var(--muted);
+    margin-top: 6px;
+  }
+  .exercise.top {
+    border-color: var(--accent);
+  }
+  .exercise.top .name::before {
+    content: "▸ ";
+    color: var(--accent);
+  }
+  #done-flash {
+    position: fixed;
+    left: 50%;
+    bottom: 48px;
+    transform: translateX(-50%) translateY(20px);
+    background: var(--accent);
+    color: #fff;
+    padding: 10px 22px;
+    border-radius: 999px;
+    font-weight: 600;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.2s, transform 0.2s;
+  }
+  #done-flash.show {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+  footer {
+    margin-top: 40px;
+    text-align: center;
+  }
+  #reset {
+    color: var(--muted);
+    font-size: 0.75rem;
+    text-decoration: underline;
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 8px 12px;
+    font-family: inherit;
+  }
+</style>
+</head>
+<body>
+<h1>Next up</h1>
+<div id="queue"></div>
+<div id="done-flash">Done ✓</div>
+<footer><button id="reset">reset all history</button></footer>
+
+<script>
+(function () {
+  "use strict";
+
+  var STORAGE_KEY = "gym-queue-v1";
+  var QUEUE_SIZE = 5;
+  var DAY_MS = 24 * 60 * 60 * 1000;
+
+  // id must be stable across versions — lastDone timestamps are keyed on it.
+  var EXERCISES = [
+    { id: "calf-raises",   name: "Calf raises",            detail: "single-leg, slow, off a step",      weight: 3 },
+    { id: "copenhagen",    name: "Copenhagen planks",      detail: "",                                   weight: 2 },
+    { id: "reverse-lunge", name: "Reverse lunges",         detail: "dumbbells",                          weight: 1 },
+    { id: "nordic-iso",    name: "Nordic isometric hold",  detail: "mid-range, held till burn",          weight: 1 }
+  ];
+
+  function loadState() {
+    try {
+      var raw = localStorage.getItem(STORAGE_KEY);
+      if (!raw) return {};
+      var parsed = JSON.parse(raw);
+      return (parsed && typeof parsed === "object") ? parsed : {};
+    } catch (e) {
+      return {};
+    }
+  }
+
+  function saveState(state) {
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+    } catch (e) { /* private browsing may block writes; queue still works for the session */ }
+  }
+
+  var state = loadState(); // { [id]: lastDoneTimestampMs }
+
+  function dueness(ex, now) {
+    var last = state[ex.id];
+    if (!last) return Infinity;
+    return (now - last) * ex.weight;
+  }
+
+  function daysAgoLabel(ts, now) {
+    if (!ts) return "never";
+    var days = Math.floor((now - ts) / DAY_MS);
+    if (days <= 0) return "today";
+    if (days === 1) return "1 day ago";
+    return days + " days ago";
+  }
+
+  function sortedQueue() {
+    var now = Date.now();
+    // Repeat the exercise list until we have at least QUEUE_SIZE entries,
+    // projecting future dueness for repeats so the order stays sensible.
+    var sorted = EXERCISES.slice().sort(function (a, b) {
+      var da = dueness(a, now), db = dueness(b, now);
+      if (da === db) return b.weight - a.weight;
+      return db - da; // most due first (Infinity = never done sorts to top)
+    });
+    var queue = [];
+    var round = 0;
+    while (queue.length < QUEUE_SIZE) {
+      for (var i = 0; i < sorted.length && queue.length < QUEUE_SIZE; i++) {
+        queue.push(sorted[i]);
+      }
+      round++;
+      if (round > QUEUE_SIZE) break;
+    }
+    return queue;
+  }
+
+  function markDone(id) {
+    state[id] = Date.now();
+    saveState(state);
+    render();
+    flash();
+  }
+
+  var flashTimer = null;
+  function flash() {
+    var el = document.getElementById("done-flash");
+    el.classList.add("show");
+    clearTimeout(flashTimer);
+    flashTimer = setTimeout(function () { el.classList.remove("show"); }, 1200);
+  }
+
+  function render() {
+    var now = Date.now();
+    var container = document.getElementById("queue");
+    container.textContent = "";
+    sortedQueue().forEach(function (ex, index) {
+      var btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "exercise" + (index === 0 ? " top" : "");
+
+      var name = document.createElement("div");
+      name.className = "name";
+      name.textContent = ex.name + (ex.detail ? " — " + ex.detail : "");
+
+      var last = document.createElement("div");
+      last.className = "last";
+      last.textContent = "last done: " + daysAgoLabel(state[ex.id], now);
+
+      btn.appendChild(name);
+      btn.appendChild(last);
+      btn.addEventListener("click", function () { markDone(ex.id); });
+      container.appendChild(btn);
+    });
+  }
+
+  document.getElementById("reset").addEventListener("click", function () {
+    if (confirm("Clear all exercise history?")) {
+      state = {};
+      try { localStorage.removeItem(STORAGE_KEY); } catch (e) {}
+      render();
+    }
+  });
+
+  // Refresh "days ago" labels when the tab is reopened on a later day.
+  document.addEventListener("visibilitychange", function () {
+    if (!document.hidden) render();
+  });
+
+  render();
+})();
+</script>
+</body>
+</html>
