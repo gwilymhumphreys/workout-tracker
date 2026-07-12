@@ -133,7 +133,7 @@
 <body>
 <div id="queue"></div>
 <div id="stopwatch">
-  <div id="sw-time">0:00.0</div>
+  <div id="sw-time">0.0</div>
   <div id="sw-buttons">
     <button type="button" id="sw-reset">Reset</button>
     <button type="button" id="sw-toggle">Start</button>
@@ -266,6 +266,7 @@
     var totalSec = Math.floor(ms / 1000);
     var sec = totalSec % 60;
     var min = Math.floor(totalSec / 60);
+    if (min < 1) return sec + "." + tenths;
     return min + ":" + (sec < 10 ? "0" : "") + sec + "." + tenths;
   }
 
