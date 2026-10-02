@@ -148,17 +148,16 @@
   "use strict";
 
   var STORAGE_KEY = "gym-queue-v1";
-  var QUEUE_SIZE = 4;
   var DAY_MS = 24 * 60 * 60 * 1000;
 
   // id must be stable across versions — lastDone timestamps are keyed on it.
   var EXERCISES = [
-    { id: "calf-raises",   name: "Calf raises",           weight: 3 },
-    { id: "copenhagen",    name: "Copenhagen planks",     weight: 2 },
-    { id: "reverse-lunge", name: "Reverse lunges",        weight: 1 },
-    { id: "nordic-iso",    name: "Nordic isometric hold", weight: 1 },
-    { id: "dips",          name: "Dips",                  weight: 1 },
-    { id: "pull-ups",      name: "Pull-ups",              weight: 1 }
+    { id: "calf-raises",   name: "Calf raises" },
+    { id: "copenhagen",    name: "Copenhagen side planks" },
+    { id: "reverse-lunge", name: "Reverse lunges" },
+    { id: "nordic-iso",    name: "Sorensen hold" },
+    { id: "dips",          name: "Dips" },
+    { id: "pull-ups",      name: "Pull-ups" }
   ];
 
   function loadState() {
@@ -180,12 +179,6 @@
 
   var state = loadState(); // { [id]: lastDoneTimestampMs }
 
-  function dueness(ex, now) {
-    var last = state[ex.id];
-    if (!last) return Infinity;
-    return (now - last) * ex.weight;
-  }
-
   function daysAgoLabel(ts, now) {
     if (!ts) return "never";
     var days = Math.floor((now - ts) / DAY_MS);
@@ -195,24 +188,10 @@
   }
 
   function sortedQueue() {
-    var now = Date.now();
-    // Repeat the exercise list until we have at least QUEUE_SIZE entries,
-    // projecting future dueness for repeats so the order stays sensible.
-    var sorted = EXERCISES.slice().sort(function (a, b) {
-      var da = dueness(a, now), db = dueness(b, now);
-      if (da === db) return b.weight - a.weight;
-      return db - da; // most due first (Infinity = never done sorts to top)
+    // Least recently done first. Never-done exercises count as 0 and go to the top.
+    return EXERCISES.slice().sort(function (a, b) {
+      return (state[a.id] || 0) - (state[b.id] || 0);
     });
-    var queue = [];
-    var round = 0;
-    while (queue.length < QUEUE_SIZE) {
-      for (var i = 0; i < sorted.length && queue.length < QUEUE_SIZE; i++) {
-        queue.push(sorted[i]);
-      }
-      round++;
-      if (round > QUEUE_SIZE) break;
-    }
-    return queue;
   }
 
   function markDone(id) {
